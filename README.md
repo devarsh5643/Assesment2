@@ -1,53 +1,116 @@
-# Adelaide Artisan Bakery
+# Adelaide Artisan Bakery - PHP Edition
 
-A production-minded, mobile-first bakery catalogue and enquiry website for a local Adelaide bakery. The public site presents baked goods and accepts validated enquiries; a token-protected admin workspace provides product CRUD and enquiry review.
+A production-ready, mobile-first bakery catalogue and enquiry website for a local Adelaide bakery. Built with native PHP and SQLite, featuring a public site showcasing baked goods, a shopping cart system, and a token-protected admin panel for product and enquiry management.
 
 ## Architecture
 
 ```text
-server.js              Express app, validation, routes and server startup
-db/database.js         SQLite connection and schema safety check
-db/setup.js            Database initialization and sample catalogue seed
-views/                 EJS server-rendered public and admin pages
-public/styles.css      Responsive accessible visual system
-data/bakery.db         Local SQLite database (created by setup, ignored by Git)
+index.php              Central router and application controller
+db/config.php          PDO-based SQLite database abstraction layer
+pages/                 PHP template files (home, menu, checkout, admin, error)
+public/styles.php      CSS delivery layer with responsive design
+public/images/         Product images (placeholder references)
+data/bakery.db         Local SQLite database (auto-created on first load)
+.htaccess              Apache URL rewriting for clean URLs
 ```
 
 ## Prerequisites
 
-- Node.js 18 or newer
-- npm
+- **PHP 7.4 or newer** with PDO SQLite support
+- **Apache with mod_rewrite enabled** (or Nginx with PHP-FPM)
+- **SQLite3 support** in PHP (usually included by default)
 
-## Installation and running
+## Quick Start
+
+### Option 1: Local Testing with Built-in PHP Server
 
 ```bash
-npm install
-copy .env.example .env
-npm run setup
-npm start
+# Navigate to project directory
+cd path/to/assessment2-1
+
+# Start PHP built-in server (no Apache needed)
+php -S localhost:8000
 ```
 
-Open `http://localhost:3000`. For development, `npm run dev` uses Node's built-in watch mode.
+Then open `http://localhost:8000` in your browser.
 
-## Environment configuration
+### Option 2: Apache Installation
 
-Copy `.env.example` to `.env` and adjust values as needed:
+1. **Install Apache + PHP** (recommended: use XAMPP, WAMP, or LEMP stack)
+2. **Enable mod_rewrite**: Uncomment `LoadModule rewrite_module` in Apache config
+3. **Copy project files** to Apache web root (typically `htdocs/`)
+4. **Restart Apache** and visit `http://localhost/assessment2-1`
 
-- `PORT`: HTTP port, default `3000`.
-- `DATABASE_URL`: SQLite file path, default `./data/bakery.db`.
-- `ADMIN_TOKEN`: token required for `/admin` and admin API access. Change it before deploying.
+### Option 3: Hosting Provider
 
-Open the admin page with the token as a query parameter, for example `http://localhost:3000/admin?token=change-this-development-token`. The token is also sent through hidden form fields for the form-based admin actions.
+Upload all files to a PHP-enabled web host. Most providers support:
+- PHP 7.4+
+- SQLite (check if enabled; request enable if not)
+- Apache with mod_rewrite
 
-## API and routes
+## Configuration
 
-- `GET /api/products`: public product JSON catalogue.
-- `GET /api/admin/products`: all products, requires `x-admin-token` or `?token=`.
-- `GET /admin?token=...`: product CRUD and enquiry review workspace.
-- `POST /enquiries`: server-validated enquiry persistence.
-- `POST /admin/products`: create a product.
-- `POST /admin/products/:id/update`: update a product.
-- `POST /admin/products/:id/delete`: delete a product.
+**Admin Token**: Edit `index.php` line 22:
+```php
+const ADMIN_TOKEN = 'change-this-development-token';
+```
+
+Change to a secure token before deployment.
+
+**Database Location**: SQLite database automatically created at `/data/bakery.db`. Ensure the `/data` directory exists and is writable.
+
+**Session Storage**: PHP uses filesystem-based sessions. Ensure `/tmp` is writable or configure `session.save_path` in `php.ini`.
+
+## Features
+
+- **Homepage**: Hero section with 5 featured products
+- **Menu Page**: All 18 bakery items with category filters (All, Bread, Pastry, Sweet, Savoury)
+- **Shopping Cart**: Add/remove items, persistent across session
+- **Checkout**: Order form with delivery details
+- **Special Offers**: Admin can mark products with discounted prices
+- **Admin Panel**: Token-protected access to:
+  - Add/edit/delete products
+  - Activate/configure special offers
+  - View and manage customer enquiries
+
+## Access Points
+
+- **Homepage**: `http://localhost:8000/`
+- **Menu**: `http://localhost:8000/menu`
+- **Checkout**: `http://localhost:8000/checkout`
+- **Admin Panel**: `http://localhost:8000/admin?token=change-this-development-token`
+
+## Database Structure
+
+**Products Table** (18 items pre-seeded):
+- id, name, description, category, price (in cents), imageUrl, is_featured, is_on_offer, offer_price
+
+**Enquiries Table**:
+- id, name, email, phone, address, items, total, message, created_at
+
+## Troubleshooting
+
+### "PHP not found" error
+Install PHP from [php.net](https://www.php.net/downloads.php) or use XAMPP/WAMP.
+
+### ".htaccess not working" / "Page not found"
+- Ensure Apache has mod_rewrite enabled
+- Check `.htaccess` file exists in project root
+- Access without URL rewriting: `http://localhost:8000/index.php?page=menu`
+
+### "Database file not writable"
+- Ensure `/data` directory exists
+- Set folder permissions: `chmod 755 data/` (Linux/Mac) or right-click Properties (Windows)
+
+### "Call to undefined function" errors
+Verify PHP version ≥ 7.4 and PDO SQLite is enabled:
+```bash
+php -m | grep -i pdo
+php -m | grep -i sqlite
+```
+
+### Session not persisting
+Check PHP's session configuration in `php.ini` - ensure `session.save_path` points to a writable directory.
 
 ## Accessibility and security notes
 
@@ -60,3 +123,5 @@ Pages use semantic landmarks, explicit labels, keyboard-visible focus styles, li
 - There is no email notification provider; enquiries are persisted in SQLite for staff review.
 - SQLite is appropriate for this zero-config local deployment, but a managed database is recommended for high traffic or multiple application instances.
 
+## Public site: http://localhost:3000
+## Admin panel: http://localhost:3000/admin?token=change-this-development-token
