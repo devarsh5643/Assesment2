@@ -1,0 +1,22 @@
+{
+  "name": "adelaide-artisan-bakery",
+  "version": "1.0.0",
+  "description": "Catalogue and enquiry website for Adelaide Artisan Bakery",
+  "main": "server.js",
+  "scripts": {
+    "setup": "node db/setup.js",
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "better-sqlite3": "^13.0.3",
+    "dotenv": "^16.4.7",
+    "ejs": "^3.1.10",
+    "express": "^4.21.2",
+    "express-session": "^1.17.3",
+    "express-validator": "^7.2.1"
+  }
+}
