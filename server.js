@@ -141,7 +141,13 @@ app.post('/cart/add/:id', (req, res) => {
   if (existingItem) {
     existingItem.quantity += quantity;
   } else {
-    cart.push({ ...formatProduct(product), quantity });
+    cart.push({
+      id: product.id,
+      name: product.name,
+      category: product.category,
+      price_cents: product.price_cents,
+      quantity
+    });
   }
   req.session.cart = cart;
   res.redirect('/checkout');
@@ -149,7 +155,7 @@ app.post('/cart/add/:id', (req, res) => {
 
 app.get('/checkout', (req, res) => {
   const cart = req.session.cart || [];
-  const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  const total = cart.reduce((sum, item) => sum + (item.price_cents * item.quantity), 0);
   res.render('checkout', { title: 'Checkout', cart, total, errors: null, formData: {} });
 });
 
@@ -181,7 +187,7 @@ const checkoutRules = [
 app.post('/checkout', checkoutRules, (req, res) => {
   const errors = validationResult(req);
   const cart = req.session.cart || [];
-  const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  const total = cart.reduce((sum, item) => sum + (item.price_cents * item.quantity), 0);
   if (!errors.isEmpty() || cart.length === 0) {
     return res.status(422).render('checkout', { 
       title: 'Checkout', 
