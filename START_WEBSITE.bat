@@ -28,13 +28,13 @@ if errorlevel 1 (
     exit /b 1
 )
 
-echo Starting Adelaide Artisan Bakery at http://localhost:8000
+echo Starting Adelaide Artisan Bakery at http://localhost:3000
 echo Press Ctrl+C in this window to stop the website.
-start "" "http://localhost:8000"
-"%PHP_EXE%" -S 127.0.0.1:8000 router.php
+start "" "http://localhost:3000"
+"%PHP_EXE%" -S 127.0.0.1:3000 router.php
 
 if errorlevel 1 (
     echo.
-    echo The server could not start. Port 8000 may already be in use.
+    echo The server could not start. Port 3000 may already be in use.
     pause
 )

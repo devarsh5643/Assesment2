@@ -32,7 +32,7 @@ The PHP module list should contain `PDO` and `pdo_sqlite`.
 1. Delete any older extracted copy of the project first. Do not merge this download into the old folder.
 2. Download the repository again and extract it to a new folder.
 3. Double-click `START_WEBSITE.bat`.
-4. The website will open at `http://localhost:8000`.
+4. The website will open at `http://localhost:3000`.
 
 > **Important:** This is a PHP website. Do not use `npm start`, `node server.js` or an old `START_SERVER` file. If an error mentions Express, EJS, `server.js`, `node_modules` or “Failed to lookup view”, you are running the deleted Node.js version from an old folder.
 
@@ -43,15 +43,15 @@ The starter uses PHP from the system PATH or from a standard XAMPP installation 
 From the project folder, run:
 
 ```bash
-php -S 127.0.0.1:8000 router.php
+php -S 127.0.0.1:3000 router.php
 ```
 
 Open these addresses:
 
-- Public website: `http://localhost:8000`
-- Menu: `http://localhost:8000/index.php?page=menu`
-- Checkout: `http://localhost:8000/index.php?page=checkout`
-- Admin: `http://localhost:8000/index.php?page=admin&token=change-this-development-token`
+- Public website: `http://localhost:3000`
+- Menu: `http://localhost:3000/index.php?page=menu`
+- Checkout: `http://localhost:3000/index.php?page=checkout`
+- Admin: `http://localhost:3000/index.php?page=admin&token=change-this-development-token`
 
 The SQLite database and tables are created automatically on the first request. Eighteen sample products are added when the product table is empty.
 
