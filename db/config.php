@@ -1,5 +1,6 @@
 <?php
-// Database configuration and functions
+declare(strict_types=1);
+
 class Database {
     private $db;
     
@@ -13,6 +14,8 @@ class Database {
         
         $this->db = new PDO('sqlite:' . $dbPath);
         $this->db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        $this->db->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
+        $this->db->exec('PRAGMA foreign_keys = ON');
         
         $this->ensureSchema();
     }
@@ -43,7 +46,7 @@ class Database {
         ");
         
         // Seed initial products if empty
-        $count = $this->db->query("SELECT COUNT(*) as count FROM products")->fetch(PDO::FETCH_ASSOC);
+        $count = $this->db->query("SELECT COUNT(*) as count FROM products")->fetch();
         if ($count['count'] == 0) {
             $this->seedProducts();
         }
@@ -72,8 +75,15 @@ class Database {
         ];
         
         $stmt = $this->db->prepare("INSERT INTO products (name, description, price_cents, category, image_url) VALUES (?, ?, ?, ?, ?)");
-        foreach ($products as $p) {
-            $stmt->execute([$p['name'], $p['description'], $p['priceCents'], $p['category'], $p['imageUrl']]);
+        $this->db->beginTransaction();
+        try {
+            foreach ($products as $p) {
+                $stmt->execute([$p['name'], $p['description'], $p['priceCents'], $p['category'], $p['imageUrl']]);
+            }
+            $this->db->commit();
+        } catch (Throwable $exception) {
+            $this->db->rollBack();
+            throw $exception;
         }
     }
     
@@ -82,17 +92,23 @@ class Database {
     }
     
     public function getAllProducts() {
-        return $this->db->query("SELECT * FROM products ORDER BY category, name")->fetchAll(PDO::FETCH_ASSOC);
+        return $this->db->query("SELECT * FROM products ORDER BY category, name")->fetchAll();
     }
     
     public function getFeaturedProducts($limit = 5) {
-        return $this->db->query("SELECT * FROM products ORDER BY category, name LIMIT $limit")->fetchAll(PDO::FETCH_ASSOC);
+        $safeLimit = max(1, min(20, (int) $limit));
+        return $this->db->query("SELECT * FROM products ORDER BY id LIMIT " . $safeLimit)->fetchAll();
     }
     
     public function getProductById($id) {
         $stmt = $this->db->prepare("SELECT * FROM products WHERE id = ?");
         $stmt->execute([$id]);
-        return $stmt->fetch(PDO::FETCH_ASSOC);
+        return $stmt->fetch();
+    }
+
+    public function addProduct($name, $description, $price_cents, $category, $image_url) {
+        $stmt = $this->db->prepare("INSERT INTO products (name, description, price_cents, category, image_url) VALUES (?, ?, ?, ?, ?)");
+        return $stmt->execute([$name, $description, $price_cents, $category, $image_url]);
     }
     
     public function addEnquiry($name, $email, $phone, $type, $message) {
@@ -101,7 +117,7 @@ class Database {
     }
     
     public function getEnquiries() {
-        return $this->db->query("SELECT * FROM enquiries ORDER BY created_at DESC")->fetchAll(PDO::FETCH_ASSOC);
+        return $this->db->query("SELECT * FROM enquiries ORDER BY created_at DESC")->fetchAll();
     }
     
     public function updateProduct($id, $name, $description, $price_cents, $category, $image_url) {
@@ -119,4 +135,3 @@ class Database {
         return $stmt->execute([$offer_price_cents, $active, $id]);
     }
 }
-?>

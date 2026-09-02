@@ -1,10 +1,10 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Adelaide Artisan Bakery</title>
-    <link rel="stylesheet" href="public/styles.php">
+    <link rel="stylesheet" href="public/styles.css">
 </head>
 <body>
 <header class="site-header">
@@ -43,7 +43,7 @@
                 <p class="eyebrow">From our ovens</p>
                 <h2 id="catalogue-title">Featured items today</h2>
             </div>
-            <p class="section-intro">A curated selection of our most popular items. <a href="index.php?page=menu" style="font-weight: 600;">View the full menu →</a></p>
+            <p class="section-intro">A curated selection of our most popular items. <a class="emphasis-link" href="index.php?page=menu">View the full menu →</a></p>
         </div>
         <div class="product-grid">
             <?php 
@@ -52,23 +52,24 @@
                 $product = formatProduct($product);
             ?>
             <article class="product-card">
-                <img src="<?= htmlspecialchars($product['image_url']) ?>" alt="<?= htmlspecialchars($product['name']) ?>" loading="lazy">
+                <img src="<?= e($product['image_url']) ?>" alt="<?= e($product['name']) ?>" loading="lazy">
                 <div class="product-info">
                     <div class="product-meta">
-                        <span><?= htmlspecialchars($product['category']) ?></span>
+                        <span><?= e($product['category']) ?></span>
                         <strong>
                             <?php if ($product['is_on_offer']): ?>
-                                $<?= $product['special_offer_price'] ?> <span style="text-decoration: line-through; color: var(--muted); font-size: 0.9em;">$<?= $product['price'] ?></span>
+                                $<?= $product['special_offer_price'] ?> <span class="regular-price">$<?= $product['price'] ?></span>
                             <?php else: ?>
                                 $<?= $product['price'] ?>
                             <?php endif; ?>
                         </strong>
                     </div>
-                    <h3><?= htmlspecialchars($product['name']) ?></h3>
-                    <p><?= htmlspecialchars($product['description']) ?></p>
-                    <form class="add-to-cart-form" action="index.php" method="get" style="margin-top: 12px;">
-                        <input type="hidden" name="page" value="cart-add">
+                    <h3><?= e($product['name']) ?></h3>
+                    <p><?= e($product['description']) ?></p>
+                    <form class="add-to-cart-form" action="index.php?page=cart-add" method="post">
+                        <input type="hidden" name="csrf_token" value="<?= e($_SESSION['csrf_token']) ?>">
                         <input type="hidden" name="id" value="<?= $product['id'] ?>">
+                        <input type="hidden" name="quantity" value="1">
                         <button class="button button-small" type="submit">Add to cart <span aria-hidden="true">→</span></button>
                     </form>
                 </div>
@@ -89,41 +90,53 @@
                     (08) 8123 4567
                 </p>
             </div>
-            <form class="enquiry-form" action="index.php" method="post" novalidate>
+            <form class="enquiry-form" action="index.php?page=enquiries" method="post" novalidate>
                 <?php if (isset($_GET['sent']) && $_GET['sent'] === '1'): ?>
                 <div class="notice success" role="status" aria-live="polite">Thanks. Your enquiry is on its way to the bakery.</div>
+                <?php endif; ?>
+                <?php if (isset($_GET['ordered']) && $_GET['ordered'] === '1'): ?>
+                <div class="notice success" role="status" aria-live="polite">Thanks. Your order has been saved for the bakery.</div>
+                <?php endif; ?>
+                <?php if (!empty($enquiryErrors)): ?>
+                <div class="notice error" role="alert" aria-live="polite">
+                    <strong>Please check the following:</strong>
+                    <ul>
+                        <?php foreach ($enquiryErrors as $error): ?>
+                        <li><?= e($error) ?></li>
+                        <?php endforeach; ?>
+                    </ul>
+                </div>
                 <?php endif; ?>
                 <div class="field-row">
                     <div class="field">
                         <label for="customerName">Your name</label>
-                        <input id="customerName" name="customerName" required>
+                        <input id="customerName" name="customerName" type="text" value="<?= e($enquiryFormData['customerName'] ?? '') ?>" autocomplete="name" required>
                     </div>
                     <div class="field">
                         <label for="email">Email address</label>
-                        <input id="email" name="email" type="email" required>
+                        <input id="email" name="email" type="email" value="<?= e($enquiryFormData['email'] ?? '') ?>" autocomplete="email" required>
                     </div>
                 </div>
                 <div class="field-row">
                     <div class="field">
                         <label for="phone">Phone</label>
-                        <input id="phone" name="phone" type="tel" required>
+                        <input id="phone" name="phone" type="tel" value="<?= e($enquiryFormData['phone'] ?? '') ?>" autocomplete="tel" required>
                     </div>
                     <div class="field">
                         <label for="enquiryType">I'm enquiring about</label>
                         <select id="enquiryType" name="enquiryType" required>
                             <option value="">Choose one</option>
-                            <option>Custom order</option>
-                            <option>Catering</option>
-                            <option>Wholesale</option>
-                            <option>General</option>
+                            <?php foreach ($enquiryTypes as $type): ?>
+                            <option <?= ($enquiryFormData['enquiryType'] ?? '') === $type ? 'selected' : '' ?>><?= e($type) ?></option>
+                            <?php endforeach; ?>
                         </select>
                     </div>
                 </div>
                 <div class="field">
                     <label for="message">Your message</label>
-                    <textarea id="message" name="message" rows="5" required></textarea>
+                    <textarea id="message" name="message" rows="5" required><?= e($enquiryFormData['message'] ?? '') ?></textarea>
                 </div>
-                <input type="hidden" name="page" value="enquiries">
+                <input type="hidden" name="csrf_token" value="<?= e($_SESSION['csrf_token']) ?>">
                 <button class="button" type="submit">Send enquiry <span aria-hidden="true">→</span></button>
             </form>
         </div>
@@ -136,7 +149,7 @@
         <div class="footer-contact">
             <a href="mailto:pateldevarsh1010@gmail.com">Email: pateldevarsh1010@gmail.com</a> · <span>Call: 0493875729</span>
         </div>
-        <a href="index.php?page=admin&token=<?= urlencode($adminToken) ?>">Admin</a>
+        <a href="index.php?page=admin&amp;token=<?= rawurlencode($adminToken) ?>">Admin</a>
     </div>
 </footer>
 </body>

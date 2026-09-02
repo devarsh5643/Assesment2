@@ -1,10 +1,10 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Full Menu - Adelaide Artisan Bakery</title>
-    <link rel="stylesheet" href="public/styles.php">
+    <link rel="stylesheet" href="public/styles.css">
 </head>
 <body>
 <header class="site-header">
@@ -31,11 +31,11 @@
         </div>
 
         <div class="menu-filters">
-            <button class="filter-btn active" data-filter="all">All Items</button>
-            <button class="filter-btn" data-filter="Bread">Bread</button>
-            <button class="filter-btn" data-filter="Pastry">Pastry</button>
-            <button class="filter-btn" data-filter="Sweet">Sweet</button>
-            <button class="filter-btn" data-filter="Savoury">Savoury</button>
+            <button class="filter-btn active" data-filter="all" aria-pressed="true">All Items</button>
+            <button class="filter-btn" data-filter="Bread" aria-pressed="false">Bread</button>
+            <button class="filter-btn" data-filter="Pastry" aria-pressed="false">Pastry</button>
+            <button class="filter-btn" data-filter="Sweet" aria-pressed="false">Sweet</button>
+            <button class="filter-btn" data-filter="Savoury" aria-pressed="false">Savoury</button>
         </div>
 
         <div class="product-grid">
@@ -44,24 +44,25 @@
             foreach ($products as $product):
                 $product = formatProduct($product);
             ?>
-            <article class="product-card" data-category="<?= htmlspecialchars($product['category']) ?>">
-                <img src="<?= htmlspecialchars($product['image_url']) ?>" alt="<?= htmlspecialchars($product['name']) ?>" loading="lazy">
+            <article class="product-card" data-category="<?= e($product['category']) ?>">
+                <img src="<?= e($product['image_url']) ?>" alt="<?= e($product['name']) ?>" loading="lazy">
                 <div class="product-info">
                     <div class="product-meta">
-                        <span><?= htmlspecialchars($product['category']) ?></span>
+                        <span><?= e($product['category']) ?></span>
                         <strong>
                             <?php if ($product['is_on_offer']): ?>
-                                $<?= $product['special_offer_price'] ?> <span style="text-decoration: line-through; color: var(--muted); font-size: 0.9em;">$<?= $product['price'] ?></span>
+                                $<?= $product['special_offer_price'] ?> <span class="regular-price">$<?= $product['price'] ?></span>
                             <?php else: ?>
                                 $<?= $product['price'] ?>
                             <?php endif; ?>
                         </strong>
                     </div>
-                    <h3><?= htmlspecialchars($product['name']) ?></h3>
-                    <p><?= htmlspecialchars($product['description']) ?></p>
-                    <form class="add-to-cart-form" action="index.php" method="get" style="margin-top: 12px;">
-                        <input type="hidden" name="page" value="cart-add">
+                    <h3><?= e($product['name']) ?></h3>
+                    <p><?= e($product['description']) ?></p>
+                    <form class="add-to-cart-form" action="index.php?page=cart-add" method="post">
+                        <input type="hidden" name="csrf_token" value="<?= e($_SESSION['csrf_token']) ?>">
                         <input type="hidden" name="id" value="<?= $product['id'] ?>">
+                        <input type="hidden" name="quantity" value="1">
                         <button class="button button-small" type="submit">Add to cart <span aria-hidden="true">→</span></button>
                     </form>
                 </div>
@@ -92,8 +93,12 @@ document.querySelectorAll('.filter-btn').forEach(btn => {
         card.style.display = 'none';
       }
     });
-    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.filter-btn').forEach(b => {
+      b.classList.remove('active');
+      b.setAttribute('aria-pressed', 'false');
+    });
     btn.classList.add('active');
+    btn.setAttribute('aria-pressed', 'true');
   });
 });
 </script>
