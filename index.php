@@ -4,8 +4,20 @@ declare(strict_types=1);
 session_start();
 require_once __DIR__ . '/db/config.php';
 
-$db = new Database();
 $adminToken = getenv('ADMIN_TOKEN') ?: 'change-this-development-token';
+
+try {
+    $db = new Database();
+} catch (Throwable $exception) {
+    http_response_code(500);
+    $errorTitle = 'PHP setup required';
+    $errorMessage = extension_loaded('pdo_sqlite')
+        ? 'The website could not create its database. Make sure the data folder is writable, then reload the page.'
+        : 'The PDO SQLite extension is not enabled. Start the website with START_WEBSITE.bat or enable pdo_sqlite in your PHP installation.';
+    include __DIR__ . '/pages/error.php';
+    exit;
+}
+
 $categories = ['Bread', 'Pastry', 'Sweet', 'Savoury'];
 $enquiryTypes = ['Custom order', 'Catering', 'Wholesale', 'General'];
 

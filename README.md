@@ -27,10 +27,23 @@ The PHP module list should contain `PDO` and `pdo_sqlite`.
 
 ## Run locally
 
+### Windows — easiest method
+
+1. Delete any older extracted copy of the project first. Do not merge this download into the old folder.
+2. Download the repository again and extract it to a new folder.
+3. Double-click `START_WEBSITE.bat`.
+4. The website will open at `http://localhost:8000`.
+
+> **Important:** This is a PHP website. Do not use `npm start`, `node server.js` or an old `START_SERVER` file. If an error mentions Express, EJS, `server.js`, `node_modules` or “Failed to lookup view”, you are running the deleted Node.js version from an old folder.
+
+The starter uses PHP from the system PATH or from a standard XAMPP installation and checks that PDO SQLite is available before opening the site.
+
+### macOS or Linux
+
 From the project folder, run:
 
 ```bash
-php -S localhost:8000
+php -S 127.0.0.1:8000 router.php
 ```
 
 Open these addresses:
@@ -47,6 +60,8 @@ The SQLite database and tables are created automatically on the first request. E
 1. Copy the project folder into the XAMPP `htdocs` folder.
 2. Start Apache from the XAMPP Control Panel.
 3. Open `http://localhost/Assesment2/`.
+
+Alternatively, double-click `START_WEBSITE.bat`; it can use `C:\xampp\php\php.exe` directly without starting Apache.
 
 ## Admin token
 
@@ -65,7 +80,9 @@ Assesment2/
 ├── .gitignore
 ├── .htaccess
 ├── README.md
+├── START_WEBSITE.bat      # Windows launcher for the PHP website
 ├── index.php              # Router, validation and application actions
+├── router.php             # Router for PHP's built-in server
 ├── data/
 │   └── .gitkeep           # Runtime database directory
 ├── db/
