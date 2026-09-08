@@ -45,7 +45,7 @@
                 $product = formatProduct($product);
             ?>
             <article class="product-card" data-category="<?= e($product['category']) ?>">
-                <img src="<?= e($product['image_url']) ?>" alt="<?= e($product['name']) ?>" loading="lazy">
+                <img src="<?= e($product['image_url']) ?>" alt="<?= e($product['name']) ?>" loading="lazy" onerror="this.onerror=null;this.src='public/image-fallback.svg';">
                 <div class="product-info">
                     <div class="product-meta">
                         <span><?= e($product['category']) ?></span>
