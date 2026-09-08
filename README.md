@@ -51,7 +51,7 @@ Open these addresses:
 - Public website: `http://localhost:3000`
 - Menu: `http://localhost:3000/index.php?page=menu`
 - Checkout: `http://localhost:3000/index.php?page=checkout`
-- Admin: `http://localhost:3000/index.php?page=admin&token=change-this-development-token`
+- Admin: `http://localhost:3000/index.php?page=admin`
 
 The SQLite database and tables are created automatically on the first request. Eighteen sample products are added when the product table is empty.
 
@@ -63,15 +63,13 @@ The SQLite database and tables are created automatically on the first request. E
 
 Alternatively, double-click `START_WEBSITE.bat`; it can use `C:\xampp\php\php.exe` directly without starting Apache.
 
-## Admin token
+## Admin login
 
-For this local assessment project, the default token is:
-
-```text
-change-this-development-token
-```
-
-To use a different token without editing the code, set the `ADMIN_TOKEN` environment variable before starting PHP.
+The admin page uses a password login and server-side session. Neither the password nor its
+hash is stored in the repository. Production receives a one-way hash in a private file
+outside the public website directory during deployment. For another server, set the
+`ADMIN_PASSWORD_HASH` environment variable to a hash generated with PHP's
+`password_hash()` function.
 
 ## Project structure
 
@@ -114,7 +112,9 @@ The runtime database is `data/bakery.db`. It is intentionally excluded from Git 
 
 ## Known local-development limitation
 
-The admin token is suitable for demonstrating protected assessment functionality locally. A public production deployment would require user accounts, stronger authentication, HTTPS and environment-managed secrets.
+The password login protects all product, offer and enquiry administration actions. A full
+commercial deployment would additionally require HTTPS, rate limiting and individual user
+accounts.
 
 ## Automatic deployment to the live server
 
@@ -122,13 +122,14 @@ The workflow in `.github/workflows/deploy.yml` automatically publishes every pus
 `main` branch to `http://32.236.141.114/`. It validates all PHP files before deploying,
 preserves the live SQLite database, reloads Apache and checks that the website responds.
 
-Add one GitHub Actions repository secret before running it:
+Add these two GitHub Actions repository secrets before running it:
 
 1. Open **Settings → Secrets and variables → Actions** in this GitHub repository.
-2. Select **New repository secret**.
-3. Name it `EC2_SSH_PRIVATE_KEY`.
-4. Paste the full private key for the EC2 key pair whose public key is authorised for
+2. Select **New repository secret** and name it `EC2_SSH_PRIVATE_KEY`.
+3. Paste the full private key for the EC2 key pair whose public key is authorised for
    `ec2-user` on the server, including the `BEGIN` and `END` lines.
+4. Create another repository secret named `ADMIN_PASSWORD` and enter the password that
+   should unlock the admin page.
 
 After the secret is saved, push a commit to `main`, or open the **Actions** tab and run
 **Deploy bakery website** manually. The server must allow inbound SSH on port 22 from

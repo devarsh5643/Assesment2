@@ -1,5 +1,5 @@
 <?php
-$adminUrl = 'index.php?page=admin&token=' . rawurlencode($adminToken);
+$adminUrl = 'index.php?page=admin';
 $noticeMessages = [
     'added' => 'Product added successfully.',
     'updated' => 'Product updated successfully.',
@@ -25,7 +25,14 @@ $enquiries = $db->getEnquiries();
             <span class="brand-mark">AAB</span>
             <span>Adelaide<br><em>Artisan Bakery</em></span>
         </a>
-        <a href="index.php">View public site</a>
+        <nav aria-label="Admin navigation">
+            <a href="index.php">View public site</a>
+            <form action="index.php?page=admin" method="post">
+                <input type="hidden" name="action" value="admin-logout">
+                <input type="hidden" name="csrf_token" value="<?= e($_SESSION['csrf_token']) ?>">
+                <button class="text-button" type="submit">Log out</button>
+            </form>
+        </nav>
     </div>
 </header>
 
@@ -57,7 +64,6 @@ $enquiries = $db->getEnquiries();
         <h2 id="add-product-title">Add a product</h2>
         <form class="admin-form" action="<?= e($adminUrl) ?>" method="post" novalidate>
             <input type="hidden" name="action" value="add-product">
-            <input type="hidden" name="adminToken" value="<?= e($adminToken) ?>">
             <input type="hidden" name="csrf_token" value="<?= e($_SESSION['csrf_token']) ?>">
 
             <label for="new-name">Name</label>
@@ -99,7 +105,6 @@ $enquiries = $db->getEnquiries();
 
                 <form class="admin-product" action="<?= e($adminUrl) ?>" method="post" novalidate>
                     <input type="hidden" name="action" value="update-product">
-                    <input type="hidden" name="adminToken" value="<?= e($adminToken) ?>">
                     <input type="hidden" name="csrf_token" value="<?= e($_SESSION['csrf_token']) ?>">
                     <input type="hidden" name="id" value="<?= (int) $product['id'] ?>">
 
@@ -138,7 +143,6 @@ $enquiries = $db->getEnquiries();
 
                 <form class="admin-special-offer" action="<?= e($adminUrl) ?>" method="post" novalidate>
                     <input type="hidden" name="action" value="set-offer">
-                    <input type="hidden" name="adminToken" value="<?= e($adminToken) ?>">
                     <input type="hidden" name="csrf_token" value="<?= e($_SESSION['csrf_token']) ?>">
                     <input type="hidden" name="id" value="<?= (int) $product['id'] ?>">
 
@@ -158,7 +162,6 @@ $enquiries = $db->getEnquiries();
 
                 <form class="delete-form" action="<?= e($adminUrl) ?>" method="post" onsubmit="return confirm('Delete this product?');">
                     <input type="hidden" name="action" value="delete-product">
-                    <input type="hidden" name="adminToken" value="<?= e($adminToken) ?>">
                     <input type="hidden" name="csrf_token" value="<?= e($_SESSION['csrf_token']) ?>">
                     <input type="hidden" name="id" value="<?= (int) $product['id'] ?>">
                     <button class="text-button danger" type="submit">Delete product</button>

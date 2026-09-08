@@ -132,7 +132,7 @@ foreach ($cart as $cartItem) {
             <a href="mailto:pateldevarsh1010@gmail.com">Email: pateldevarsh1010@gmail.com</a>
             <span>Call: 0493875729</span>
         </div>
-        <a href="index.php?page=admin&amp;token=<?= rawurlencode($adminToken) ?>">Admin</a>
+        <a href="index.php?page=admin">Admin</a>
     </div>
 </footer>
 </body>

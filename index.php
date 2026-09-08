@@ -1,10 +1,19 @@
 <?php
 declare(strict_types=1);
 
+session_set_cookie_params([
+    'httponly' => true,
+    'secure' => !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off',
+    'samesite' => 'Lax',
+]);
 session_start();
 require_once __DIR__ . '/db/config.php';
 
-$adminToken = getenv('ADMIN_TOKEN') ?: 'change-this-development-token';
+$adminPasswordHash = getenv('ADMIN_PASSWORD_HASH') ?: '';
+$adminPasswordHashFile = '/var/www/.bakery-admin-password-hash';
+if ($adminPasswordHash === '' && is_readable($adminPasswordHashFile)) {
+    $adminPasswordHash = trim((string) file_get_contents($adminPasswordHashFile));
+}
 
 try {
     $db = new Database();
@@ -36,6 +45,7 @@ $checkoutErrors = [];
 $checkoutFormData = [];
 $adminErrors = [];
 $adminFormData = [];
+$adminLoginError = '';
 
 function e($value): string
 {
@@ -54,10 +64,9 @@ function csrfIsValid(): bool
     return $submitted !== '' && hash_equals((string) $_SESSION['csrf_token'], $submitted);
 }
 
-function isAdmin(string $adminToken): bool
+function isAdmin(): bool
 {
-    $submittedToken = (string) ($_GET['token'] ?? $_POST['adminToken'] ?? '');
-    return $submittedToken !== '' && hash_equals($adminToken, $submittedToken);
+    return isset($_SESSION['admin_authenticated']) && $_SESSION['admin_authenticated'] === true;
 }
 
 function formatProduct(array $product): array
@@ -317,11 +326,37 @@ if ($page === 'enquiries' && $_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 if ($page === 'admin') {
-    if (!isAdmin($adminToken)) {
+    header('Cache-Control: no-store, no-cache, must-revalidate');
+
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action === 'admin-login') {
+        if (!csrfIsValid()) {
+            $adminLoginError = 'Your session expired. Please reload the page and try again.';
+        } elseif ($adminPasswordHash !== '' && password_verify((string) ($_POST['password'] ?? ''), $adminPasswordHash)) {
+            session_regenerate_id(true);
+            $_SESSION['admin_authenticated'] = true;
+            $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+            redirectTo('index.php?page=admin');
+        } else {
+            usleep(500000);
+            $adminLoginError = 'Incorrect password. Please try again.';
+        }
+
         http_response_code(401);
-        $errorTitle = 'Admin access required';
-        $errorMessage = 'Use the configured admin token to access this page.';
-        include __DIR__ . '/pages/error.php';
+        include __DIR__ . '/pages/admin-login.php';
+        exit;
+    }
+
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action === 'admin-logout') {
+        if (csrfIsValid()) {
+            unset($_SESSION['admin_authenticated']);
+            session_regenerate_id(true);
+            $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+        }
+        redirectTo('index.php?page=admin');
+    }
+
+    if (!isAdmin()) {
+        include __DIR__ . '/pages/admin-login.php';
         exit;
     }
 
@@ -347,7 +382,7 @@ if ($page === 'admin') {
                         trim((string) $_POST['category']),
                         trim((string) $_POST['imageUrl'])
                     );
-                    redirectTo('index.php?page=admin&token=' . rawurlencode($adminToken) . '&notice=added');
+                    redirectTo('index.php?page=admin&notice=added');
                 }
 
                 $db->updateProduct(
@@ -358,7 +393,7 @@ if ($page === 'admin') {
                     trim((string) $_POST['category']),
                     trim((string) $_POST['imageUrl'])
                 );
-                redirectTo('index.php?page=admin&token=' . rawurlencode($adminToken) . '&notice=updated');
+                redirectTo('index.php?page=admin&notice=updated');
             }
         } elseif ($action === 'delete-product') {
             $productId = filter_input(INPUT_POST, 'id', FILTER_VALIDATE_INT);
@@ -366,7 +401,7 @@ if ($page === 'admin') {
                 $adminErrors[] = 'The selected product could not be found.';
             } else {
                 $db->deleteProduct((int) $productId);
-                redirectTo('index.php?page=admin&token=' . rawurlencode($adminToken) . '&notice=deleted');
+                redirectTo('index.php?page=admin&notice=deleted');
             }
         } elseif ($action === 'set-offer') {
             $productId = filter_input(INPUT_POST, 'id', FILTER_VALIDATE_INT);
@@ -390,7 +425,7 @@ if ($page === 'admin') {
 
             if (empty($adminErrors)) {
                 $db->setSpecialOffer((int) $productId, $offerPriceCents, $active ? 1 : 0);
-                redirectTo('index.php?page=admin&token=' . rawurlencode($adminToken) . '&notice=offer');
+                redirectTo('index.php?page=admin&notice=offer');
             }
         } else {
             $adminErrors[] = 'The requested admin action is not supported.';

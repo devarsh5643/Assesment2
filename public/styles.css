@@ -576,6 +576,32 @@ textarea:focus {
     padding: 50px 0;
 }
 
+.admin-login-page {
+    display: grid;
+    min-height: calc(100vh - 210px);
+    padding-block: 60px;
+    place-items: center;
+}
+
+.admin-login-card {
+    width: min(100%, 480px);
+    padding: 36px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--white);
+    box-shadow: 0 16px 40px rgba(41, 50, 61, .1);
+}
+
+.admin-login-card form {
+    display: grid;
+    gap: 14px;
+    margin-top: 24px;
+}
+
+.admin-login-card .button {
+    margin-top: 6px;
+}
+
 .admin-section {
     margin-bottom: 50px;
     padding: 35px;

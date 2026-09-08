@@ -32,14 +32,21 @@ jobs:
       - name: Configure SSH
         env:
           SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
+          ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
         run: |
           if [ -z "$SSH_PRIVATE_KEY" ]; then
             echo "::error::Add the EC2_SSH_PRIVATE_KEY repository secret before deploying."
             exit 1
           fi
+          if [ -z "$ADMIN_PASSWORD" ]; then
+            echo "::error::Add the ADMIN_PASSWORD repository secret before deploying."
+            exit 1
+          fi
           install -m 700 -d ~/.ssh
           printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
+          php -r 'echo password_hash(getenv("ADMIN_PASSWORD"), PASSWORD_DEFAULT);' > ~/.ssh/admin_password_hash
+          chmod 600 ~/.ssh/admin_password_hash
           ssh-keyscan -H 32.236.141.114 >> ~/.ssh/known_hosts
 
       - name: Upload release
@@ -51,6 +58,9 @@ jobs:
             --exclude='data/bakery.db-*' \
             -e "ssh -i ~/.ssh/deploy_key" \
             ./ ec2-user@32.236.141.114:/tmp/adelaide-bakery-release/
+          scp -i ~/.ssh/deploy_key \
+            ~/.ssh/admin_password_hash \
+            ec2-user@32.236.141.114:/tmp/admin_password_hash
 
       - name: Activate release
         run: |
@@ -68,9 +78,14 @@ jobs:
             sudo find /var/www/html -type f -exec chmod 644 {} +
             sudo restorecon -RF /var/www/html 2>/dev/null || true
 
+            sudo install -o apache -g apache -m 600 \
+              /tmp/admin_password_hash /var/www/.bakery-admin-password-hash
+            sudo restorecon -F /var/www/.bakery-admin-password-hash 2>/dev/null || true
+
             sudo apachectl configtest
             sudo systemctl reload httpd
             rm -rf /tmp/adelaide-bakery-release
+            rm -f /tmp/admin_password_hash
           REMOTE
 
       - name: Verify live website
