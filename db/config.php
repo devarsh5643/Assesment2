@@ -45,6 +45,14 @@ class Database {
             );
         ");
         
+        // Repair the previously broken Chocolate Éclair image in existing databases.
+        $repairImage = $this->db->prepare("UPDATE products SET image_url = ? WHERE name = ? AND image_url = ?");
+        $repairImage->execute([
+            'https://images.unsplash.com/photo-1774119657163-6a03af5f96d2?auto=format&fit=crop&w=900&q=80',
+            'Chocolate Éclair',
+            'https://images.unsplash.com/photo-1585080876138-1a6da1709e88?auto=format&fit=crop&w=900&q=80',
+        ]);
+        
         // Seed initial products if empty
         $count = $this->db->query("SELECT COUNT(*) as count FROM products")->fetch();
         if ($count['count'] == 0) {
@@ -58,7 +66,7 @@ class Database {
             ['name' => 'Almond Croissant', 'description' => 'Buttery laminated pastry filled with almond frangipane and toasted almonds.', 'priceCents' => 680, 'category' => 'Pastry', 'imageUrl' => 'https://images.unsplash.com/photo-1555507036-ab1f4038808a?auto=format&fit=crop&w=900&q=80'],
             ['name' => 'Seasonal Fruit Tart', 'description' => 'Vanilla bean custard, crisp pastry and the best fruit from the market.', 'priceCents' => 720, 'category' => 'Sweet', 'imageUrl' => 'https://images.unsplash.com/photo-1519915028121-7d3463d20b13?auto=format&fit=crop&w=900&q=80'],
             ['name' => 'Rosemary Focaccia', 'description' => 'Olive oil-rich focaccia finished with rosemary, sea salt and garlic.', 'priceCents' => 950, 'category' => 'Bread', 'imageUrl' => 'https://images.unsplash.com/photo-1598373182133-52452f7691ef?auto=format&fit=crop&w=900&q=80'],
-            ['name' => 'Chocolate Éclair', 'description' => 'Light choux pastry filled with silky chocolate cream and topped with glossy dark chocolate.', 'priceCents' => 450, 'category' => 'Sweet', 'imageUrl' => 'https://images.unsplash.com/photo-1585080876138-1a6da1709e88?auto=format&fit=crop&w=900&q=80'],
+            ['name' => 'Chocolate Éclair', 'description' => 'Light choux pastry filled with silky chocolate cream and topped with glossy dark chocolate.', 'priceCents' => 450, 'category' => 'Sweet', 'imageUrl' => 'https://images.unsplash.com/photo-1774119657163-6a03af5f96d2?auto=format&fit=crop&w=900&q=80'],
             ['name' => 'Olive & Feta Soufflé', 'description' => 'Savoury puffed pastry with Kalamata olives, creamy feta and fresh herbs.', 'priceCents' => 550, 'category' => 'Savoury', 'imageUrl' => 'https://images.unsplash.com/photo-1586985289688-cacf913ecc0c?auto=format&fit=crop&w=900&q=80'],
             ['name' => 'Pistachio Macarons', 'description' => 'Delicate French almond meringue cookies with creamy pistachio filling. Pack of 6.', 'priceCents' => 890, 'category' => 'Sweet', 'imageUrl' => 'https://images.unsplash.com/photo-1569718212817-e52f991a10e7?auto=format&fit=crop&w=900&q=80'],
             ['name' => 'Spinach & Cheese Danish', 'description' => 'Flaky laminated pastry with seasoned spinach, ricotta and roasted garlic.', 'priceCents' => 620, 'category' => 'Savoury', 'imageUrl' => 'https://images.unsplash.com/photo-1574197201214-f6b766a13c7d?auto=format&fit=crop&w=900&q=80'],
