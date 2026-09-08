@@ -45,13 +45,19 @@ class Database {
             );
         ");
         
-        // Repair the previously broken Chocolate Éclair image in existing databases.
-        $repairImage = $this->db->prepare("UPDATE products SET image_url = ? WHERE name = ? AND image_url = ?");
-        $repairImage->execute([
-            'https://images.unsplash.com/photo-1774119657163-6a03af5f96d2?auto=format&fit=crop&w=900&q=80',
-            'Chocolate Éclair',
-            'https://images.unsplash.com/photo-1585080876138-1a6da1709e88?auto=format&fit=crop&w=900&q=80',
-        ]);
+        // Repair broken product image URLs in databases created by older versions.
+        $imageRepairs = [
+            'https://images.unsplash.com/photo-1585080876138-1a6da1709e88?auto=format&fit=crop&w=900&q=80' => 'https://images.unsplash.com/photo-1774119657163-6a03af5f96d2?auto=format&fit=crop&w=900&q=80',
+            'https://images.unsplash.com/photo-1586985289688-cacf913ecc0c?auto=format&fit=crop&w=900&q=80' => 'https://images.unsplash.com/photo-1589208720811-6899c209f51b?auto=format&fit=crop&w=900&q=80',
+            'https://images.unsplash.com/photo-1569718212817-e52f991a10e7?auto=format&fit=crop&w=900&q=80' => 'https://images.unsplash.com/photo-1699836089011-8c3787ad1cf8?auto=format&fit=crop&w=900&q=80',
+            'https://images.unsplash.com/photo-1574197201214-f6b766a13c7d?auto=format&fit=crop&w=900&q=80' => 'https://images.unsplash.com/photo-1549203386-9d4394c8a2fe?auto=format&fit=crop&w=900&q=80',
+            'https://images.unsplash.com/photo-1623428508639-7f821e5da61f?auto=format&fit=crop&w=900&q=80' => 'https://images.unsplash.com/photo-1589208720811-6899c209f51b?auto=format&fit=crop&w=900&q=80',
+            'https://images.unsplash.com/photo-1573520056683-d51a44f19fac?auto=format&fit=crop&w=900&q=80' => 'https://images.unsplash.com/photo-1676272650338-faaea8e5e5fd?auto=format&fit=crop&w=900&q=80',
+        ];
+        $repairImage = $this->db->prepare("UPDATE products SET image_url = ? WHERE image_url = ?");
+        foreach ($imageRepairs as $oldImageUrl => $newImageUrl) {
+            $repairImage->execute([$newImageUrl, $oldImageUrl]);
+        }
         
         // Seed initial products if empty
         $count = $this->db->query("SELECT COUNT(*) as count FROM products")->fetch();
@@ -67,14 +73,14 @@ class Database {
             ['name' => 'Seasonal Fruit Tart', 'description' => 'Vanilla bean custard, crisp pastry and the best fruit from the market.', 'priceCents' => 720, 'category' => 'Sweet', 'imageUrl' => 'https://images.unsplash.com/photo-1519915028121-7d3463d20b13?auto=format&fit=crop&w=900&q=80'],
             ['name' => 'Rosemary Focaccia', 'description' => 'Olive oil-rich focaccia finished with rosemary, sea salt and garlic.', 'priceCents' => 950, 'category' => 'Bread', 'imageUrl' => 'https://images.unsplash.com/photo-1598373182133-52452f7691ef?auto=format&fit=crop&w=900&q=80'],
             ['name' => 'Chocolate Éclair', 'description' => 'Light choux pastry filled with silky chocolate cream and topped with glossy dark chocolate.', 'priceCents' => 450, 'category' => 'Sweet', 'imageUrl' => 'https://images.unsplash.com/photo-1774119657163-6a03af5f96d2?auto=format&fit=crop&w=900&q=80'],
-            ['name' => 'Olive & Feta Soufflé', 'description' => 'Savoury puffed pastry with Kalamata olives, creamy feta and fresh herbs.', 'priceCents' => 550, 'category' => 'Savoury', 'imageUrl' => 'https://images.unsplash.com/photo-1586985289688-cacf913ecc0c?auto=format&fit=crop&w=900&q=80'],
-            ['name' => 'Pistachio Macarons', 'description' => 'Delicate French almond meringue cookies with creamy pistachio filling. Pack of 6.', 'priceCents' => 890, 'category' => 'Sweet', 'imageUrl' => 'https://images.unsplash.com/photo-1569718212817-e52f991a10e7?auto=format&fit=crop&w=900&q=80'],
-            ['name' => 'Spinach & Cheese Danish', 'description' => 'Flaky laminated pastry with seasoned spinach, ricotta and roasted garlic.', 'priceCents' => 620, 'category' => 'Savoury', 'imageUrl' => 'https://images.unsplash.com/photo-1574197201214-f6b766a13c7d?auto=format&fit=crop&w=900&q=80'],
+            ['name' => 'Olive & Feta Soufflé', 'description' => 'Savoury puffed pastry with Kalamata olives, creamy feta and fresh herbs.', 'priceCents' => 550, 'category' => 'Savoury', 'imageUrl' => 'https://images.unsplash.com/photo-1589208720811-6899c209f51b?auto=format&fit=crop&w=900&q=80'],
+            ['name' => 'Pistachio Macarons', 'description' => 'Delicate French almond meringue cookies with creamy pistachio filling. Pack of 6.', 'priceCents' => 890, 'category' => 'Sweet', 'imageUrl' => 'https://images.unsplash.com/photo-1699836089011-8c3787ad1cf8?auto=format&fit=crop&w=900&q=80'],
+            ['name' => 'Spinach & Cheese Danish', 'description' => 'Flaky laminated pastry with seasoned spinach, ricotta and roasted garlic.', 'priceCents' => 620, 'category' => 'Savoury', 'imageUrl' => 'https://images.unsplash.com/photo-1549203386-9d4394c8a2fe?auto=format&fit=crop&w=900&q=80'],
             ['name' => 'Multigrain Artisan Loaf', 'description' => 'Hearty blend of grains and seeds with a nutty flavour and wholesome texture.', 'priceCents' => 920, 'category' => 'Bread', 'imageUrl' => 'https://images.unsplash.com/photo-1580822184713-fc5400e7fe10?auto=format&fit=crop&w=900&q=80'],
             ['name' => 'Lemon Meringue Tart', 'description' => 'Tangy lemon curd in a crisp pastry shell, topped with golden toasted meringue.', 'priceCents' => 780, 'category' => 'Sweet', 'imageUrl' => 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&w=900&q=80'],
-            ['name' => 'Goat Cheese & Honey Pastry', 'description' => 'Creamy goat cheese with golden honey drizzle on flaky pastry crust.', 'priceCents' => 590, 'category' => 'Savoury', 'imageUrl' => 'https://images.unsplash.com/photo-1623428508639-7f821e5da61f?auto=format&fit=crop&w=900&q=80'],
+            ['name' => 'Goat Cheese & Honey Pastry', 'description' => 'Creamy goat cheese with golden honey drizzle on flaky pastry crust.', 'priceCents' => 590, 'category' => 'Savoury', 'imageUrl' => 'https://images.unsplash.com/photo-1589208720811-6899c209f51b?auto=format&fit=crop&w=900&q=80'],
             ['name' => 'Matcha Green Tea Cake', 'description' => 'Delicate matcha sponge cake with white chocolate mousse and fresh berries.', 'priceCents' => 650, 'category' => 'Sweet', 'imageUrl' => 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&w=900&q=80'],
-            ['name' => 'Sesame Bagel', 'description' => 'Chewy bagel with a crispy crust, topped with toasted sesame seeds.', 'priceCents' => 380, 'category' => 'Bread', 'imageUrl' => 'https://images.unsplash.com/photo-1573520056683-d51a44f19fac?auto=format&fit=crop&w=900&q=80'],
+            ['name' => 'Sesame Bagel', 'description' => 'Chewy bagel with a crispy crust, topped with toasted sesame seeds.', 'priceCents' => 380, 'category' => 'Bread', 'imageUrl' => 'https://images.unsplash.com/photo-1676272650338-faaea8e5e5fd?auto=format&fit=crop&w=900&q=80'],
             ['name' => 'Pesto & Sun-Dried Tomato Bread', 'description' => 'Aromatic basil pesto swirled with sun-dried tomatoes in soft Italian-style loaf.', 'priceCents' => 880, 'category' => 'Bread', 'imageUrl' => 'https://images.unsplash.com/photo-1598373182133-52452f7691ef?auto=format&fit=crop&w=900&q=80'],
             ['name' => 'Vanilla Bean Custard Slice', 'description' => 'Classic custard slice with smooth vanilla bean custard between crispy pastry layers.', 'priceCents' => 520, 'category' => 'Sweet', 'imageUrl' => 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&w=900&q=80'],
             ['name' => 'Mushroom & Thyme Quiche', 'description' => 'Savory quiche with sautéed mushrooms, fresh thyme and creamy egg custard.', 'priceCents' => 680, 'category' => 'Savoury', 'imageUrl' => 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&w=900&q=80'],
