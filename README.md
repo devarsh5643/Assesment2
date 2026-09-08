@@ -115,3 +115,21 @@ The runtime database is `data/bakery.db`. It is intentionally excluded from Git 
 ## Known local-development limitation
 
 The admin token is suitable for demonstrating protected assessment functionality locally. A public production deployment would require user accounts, stronger authentication, HTTPS and environment-managed secrets.
+
+## Automatic deployment to the live server
+
+The workflow in `.github/workflows/deploy.yml` automatically publishes every push to the
+`main` branch to `http://32.236.141.114/`. It validates all PHP files before deploying,
+preserves the live SQLite database, reloads Apache and checks that the website responds.
+
+Add one GitHub Actions repository secret before running it:
+
+1. Open **Settings → Secrets and variables → Actions** in this GitHub repository.
+2. Select **New repository secret**.
+3. Name it `EC2_SSH_PRIVATE_KEY`.
+4. Paste the full private key for the EC2 key pair whose public key is authorised for
+   `ec2-user` on the server, including the `BEGIN` and `END` lines.
+
+After the secret is saved, push a commit to `main`, or open the **Actions** tab and run
+**Deploy bakery website** manually. The server must allow inbound SSH on port 22 from
+GitHub-hosted runners, and `ec2-user` must have its normal passwordless `sudo` access.
