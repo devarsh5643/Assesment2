@@ -1,0 +1,73 @@
+name: Deploy bakery website
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bakery-production
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: Deploy to Amazon Linux server
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Validate PHP files
+        run: |
+          while IFS= read -r -d '' file; do
+            php -l "$file"
+          done < <(find . -type f -name '*.php' -print0)
+
+      - name: Configure SSH
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H 32.236.141.114 >> ~/.ssh/known_hosts
+
+      - name: Upload release
+        run: |
+          rsync -az --delete \
+            --exclude='.git/' \
+            --exclude='.github/' \
+            --exclude='data/bakery.db' \
+            --exclude='data/bakery.db-*' \
+            -e "ssh -i ~/.ssh/deploy_key" \
+            ./ ec2-user@32.236.141.114:/tmp/adelaide-bakery-release/
+
+      - name: Activate release
+        run: |
+          ssh -i ~/.ssh/deploy_key ec2-user@32.236.141.114 <<'REMOTE'
+            set -euo pipefail
+
+            sudo mkdir -p /var/www/html/data
+            sudo rsync -a --delete \
+              --exclude='data/bakery.db' \
+              --exclude='data/bakery.db-*' \
+              /tmp/adelaide-bakery-release/ /var/www/html/
+
+            sudo chown -R apache:apache /var/www/html/data
+            sudo find /var/www/html -type d -exec chmod 755 {} +
+            sudo find /var/www/html -type f -exec chmod 644 {} +
+            sudo restorecon -RF /var/www/html 2>/dev/null || true
+
+            sudo apachectl configtest
+            sudo systemctl reload httpd
+            rm -rf /tmp/adelaide-bakery-release
+          REMOTE
+
+      - name: Verify live website
+        run: curl --fail --show-error --retry 5 --retry-delay 3 http://32.236.141.114/
