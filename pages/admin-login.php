@@ -20,13 +20,33 @@
 <main class="admin-login-page container">
     <section class="admin-login-card" aria-labelledby="admin-login-title">
         <p class="eyebrow">Protected area</p>
+        <?php if (!empty($_SESSION['admin_mfa_pending'])): ?>
+        <h1 id="admin-login-title">Verification code</h1>
+        <p>Enter the current code from Microsoft Authenticator to finish signing in.</p>
+        <?php else: ?>
         <h1 id="admin-login-title">Admin login</h1>
         <p>Enter the administrator password to manage products, offers and enquiries.</p>
+        <?php endif; ?>
 
         <?php if ($adminLoginError !== ''): ?>
         <div class="notice error" role="alert"><?= e($adminLoginError) ?></div>
         <?php endif; ?>
 
+        <?php if (!empty($_SESSION['admin_mfa_pending'])): ?>
+        <form action="index.php?page=admin" method="post">
+            <input type="hidden" name="action" value="admin-mfa-login">
+            <input type="hidden" name="csrf_token" value="<?= e($_SESSION['csrf_token']) ?>">
+
+            <label for="admin-verification-code">Authenticator or recovery code</label>
+            <input id="admin-verification-code" name="verificationCode" type="text" autocomplete="one-time-code" placeholder="000000 or recovery code" required autofocus>
+            <button class="button" type="submit">Verify and sign in</button>
+        </form>
+        <form class="admin-login-back" action="index.php?page=admin" method="post">
+            <input type="hidden" name="action" value="admin-mfa-back">
+            <input type="hidden" name="csrf_token" value="<?= e($_SESSION['csrf_token']) ?>">
+            <button class="text-button" type="submit">Use password instead</button>
+        </form>
+        <?php else: ?>
         <form action="index.php?page=admin" method="post">
             <input type="hidden" name="action" value="admin-login">
             <input type="hidden" name="csrf_token" value="<?= e($_SESSION['csrf_token']) ?>">
@@ -35,6 +55,7 @@
             <input id="admin-password" name="password" type="password" autocomplete="current-password" required autofocus>
             <button class="button" type="submit">Log in</button>
         </form>
+        <?php endif; ?>
     </section>
 </main>
 

@@ -598,6 +598,11 @@ textarea:focus {
     margin-top: 6px;
 }
 
+.admin-login-card .admin-login-back {
+    margin-top: 10px;
+    text-align: center;
+}
+
 .admin-shell-body {
     --admin-navy: #17212b;
     --admin-navy-soft: #22303d;
@@ -1334,6 +1339,271 @@ textarea:focus {
     font-size: 11px;
 }
 
+.admin-authenticator {
+    overflow: hidden;
+    border: 1px solid #dfe5ea;
+    border-radius: 11px;
+}
+
+.admin-authenticator-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    padding: 18px 20px;
+    background: #fafbfc;
+}
+
+.admin-authenticator-heading > div {
+    display: flex;
+    align-items: center;
+    gap: 13px;
+}
+
+.admin-authenticator-logo {
+    display: grid;
+    width: 40px;
+    height: 40px;
+    flex: 0 0 40px;
+    place-items: center;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #5d65d8, #3978d4);
+    color: #fff;
+    font-size: 17px;
+    font-weight: 850;
+}
+
+.admin-authenticator-heading h3,
+.admin-authenticator-heading p,
+.admin-password-heading h3,
+.admin-password-heading p {
+    margin: 0;
+}
+
+.admin-authenticator-heading h3,
+.admin-password-heading h3 {
+    color: #2b3641;
+    font-size: 14px;
+}
+
+.admin-authenticator-heading p,
+.admin-password-heading p {
+    color: #7e8a94;
+    font-size: 11px;
+}
+
+.mfa-status {
+    padding: 5px 9px;
+    border-radius: 20px;
+    background: #edf0f2;
+    color: #68747e;
+    font-size: 10px;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.mfa-status.enabled {
+    background: #e3f6eb;
+    color: #267a4f;
+}
+
+.mfa-start-form {
+    display: grid;
+    grid-template-columns: minmax(200px, 1fr) minmax(190px, .7fr) auto;
+    align-items: end;
+    gap: 20px;
+    padding: 20px;
+    border-top: 1px solid #e8ecef;
+}
+
+.mfa-start-form > div:first-child {
+    align-self: center;
+}
+
+.mfa-start-form strong,
+.mfa-start-form p {
+    margin: 0;
+}
+
+.mfa-start-form strong {
+    font-size: 13px;
+}
+
+.mfa-start-form p {
+    color: #7e8a94;
+    font-size: 11px;
+}
+
+.mfa-start-form .field,
+.mfa-disable-form .field,
+.mfa-setup-steps .field {
+    margin: 0;
+}
+
+.mfa-setup-grid {
+    display: grid;
+    grid-template-columns: 250px minmax(0, 1fr);
+    gap: 30px;
+    padding: 25px;
+    border-top: 1px solid #e8ecef;
+}
+
+.mfa-qr-panel {
+    display: grid;
+    align-content: start;
+    justify-items: center;
+    padding: 18px;
+    border-radius: 10px;
+    background: #f4f6f8;
+    text-align: center;
+}
+
+#mfa-qrcode {
+    display: grid;
+    width: 210px;
+    min-height: 210px;
+    padding: 10px;
+    place-items: center;
+    border: 1px solid #dce2e7;
+    border-radius: 8px;
+    background: #fff;
+}
+
+#mfa-qrcode img,
+#mfa-qrcode canvas {
+    display: block;
+    max-width: 100%;
+}
+
+.mfa-qr-panel p {
+    margin: 12px 0 0;
+    color: #687580;
+    font-size: 10px;
+}
+
+.mfa-setup-steps {
+    min-width: 0;
+}
+
+.mfa-step {
+    display: flex;
+    align-items: flex-start;
+    gap: 9px;
+    margin: 0 0 13px;
+    color: #596672;
+    font-size: 12px;
+}
+
+.mfa-step span {
+    display: grid;
+    width: 20px;
+    height: 20px;
+    flex: 0 0 20px;
+    place-items: center;
+    border-radius: 50%;
+    background: var(--admin-navy-soft);
+    color: #fff;
+    font-size: 9px;
+    font-weight: 800;
+}
+
+.mfa-secret {
+    display: block;
+    overflow-wrap: anywhere;
+    margin: -3px 0 18px 29px;
+    padding: 10px 12px;
+    border: 1px dashed #cbd3da;
+    border-radius: 7px;
+    background: #f8fafb;
+    color: #374550;
+    font-size: 12px;
+    letter-spacing: 1.3px;
+}
+
+.mfa-setup-steps form:not(.mfa-cancel-form) {
+    display: grid;
+    grid-template-columns: minmax(150px, 220px) auto;
+    align-items: end;
+    gap: 12px;
+    margin-left: 29px;
+}
+
+.mfa-cancel-form {
+    margin: 14px 0 0 29px;
+}
+
+.mfa-enabled-box,
+.mfa-recovery-box {
+    padding: 20px;
+    border-top: 1px solid #e8ecef;
+}
+
+.mfa-enabled-box > p,
+.mfa-recovery-box > p {
+    margin: 0 0 14px;
+    color: #63707b;
+    font-size: 12px;
+}
+
+.mfa-enabled-box details {
+    padding-top: 4px;
+}
+
+.mfa-enabled-box summary {
+    color: #9a343b;
+    cursor: pointer;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.mfa-disable-form {
+    display: grid;
+    grid-template-columns: minmax(180px, 1fr) minmax(180px, 1fr) auto;
+    align-items: end;
+    gap: 15px;
+    margin-top: 16px;
+    padding: 17px;
+    border: 1px solid #eed6d8;
+    border-radius: 8px;
+    background: #fff8f8;
+}
+
+.mfa-recovery-box {
+    background: #fffbef;
+}
+
+.mfa-recovery-box h4 {
+    margin: 0 0 3px;
+    color: #5e4c1d;
+}
+
+.mfa-recovery-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+    margin: 16px 0;
+}
+
+.mfa-recovery-grid code {
+    padding: 8px;
+    border: 1px solid #eadcae;
+    border-radius: 6px;
+    background: #fff;
+    color: #423a26;
+    font-size: 11px;
+    text-align: center;
+}
+
+.admin-security-divider {
+    height: 1px;
+    margin: 30px 0;
+    background: #e7ebee;
+}
+
+.admin-password-heading {
+    margin-bottom: 18px;
+}
+
 .admin-footer {
     display: flex;
     justify-content: space-between;
@@ -1431,6 +1701,20 @@ textarea:focus {
     .admin-special-offer {
         grid-template-columns: 1fr 1fr;
         align-items: end;
+    }
+
+    .mfa-start-form,
+    .mfa-disable-form {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .mfa-start-form > div:first-child,
+    .mfa-disable-form button {
+        grid-column: 1 / -1;
+    }
+
+    .mfa-recovery-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 }
 
@@ -1620,6 +1904,68 @@ textarea:focus {
     .admin-footer {
         flex-direction: column;
         gap: 3px;
+    }
+
+    .admin-authenticator-heading {
+        align-items: flex-start;
+    }
+
+    .admin-authenticator-heading p {
+        display: none;
+    }
+
+    .mfa-start-form,
+    .mfa-disable-form,
+    .mfa-setup-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .mfa-start-form > div:first-child,
+    .mfa-disable-form button {
+        grid-column: auto;
+    }
+
+    .mfa-setup-grid {
+        gap: 20px;
+        padding: 18px;
+    }
+
+    .mfa-setup-steps form:not(.mfa-cancel-form) {
+        grid-template-columns: 1fr;
+        align-items: stretch;
+        margin-left: 0;
+    }
+
+    .mfa-secret,
+    .mfa-cancel-form {
+        margin-left: 0;
+    }
+
+    .mfa-recovery-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+@media print {
+    .admin-topbar,
+    .admin-sidebar,
+    .admin-workspace > :not(#security),
+    #security > :not(.admin-authenticator),
+    .admin-authenticator-heading,
+    .mfa-recovery-box > .button {
+        display: none !important;
+    }
+
+    .admin-shell,
+    .admin-workspace {
+        display: block;
+        padding: 0;
+    }
+
+    .admin-panel,
+    .admin-authenticator {
+        border: 0;
+        box-shadow: none;
     }
 }
 

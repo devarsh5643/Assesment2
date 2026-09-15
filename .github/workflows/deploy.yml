@@ -84,10 +84,18 @@ jobs:
             fi
             sudo restorecon -F /var/www/.bakery-admin-password-hash 2>/dev/null || true
 
+            if ! sudo test -f /var/www/.bakery-admin-mfa.json; then
+              printf '%s\n' '{"enabled":false,"secret":"","recovery_codes":[],"last_counter":-1}' \
+                > /tmp/admin_mfa.json
+              sudo install -o apache -g apache -m 600 \
+                /tmp/admin_mfa.json /var/www/.bakery-admin-mfa.json
+            fi
+            sudo restorecon -F /var/www/.bakery-admin-mfa.json 2>/dev/null || true
+
             sudo apachectl configtest
             sudo systemctl reload httpd
             rm -rf /tmp/adelaide-bakery-release
-            rm -f /tmp/admin_password_hash
+            rm -f /tmp/admin_password_hash /tmp/admin_mfa.json
           REMOTE
 
       - name: Configure trusted HTTPS certificate

@@ -14,6 +14,14 @@ $adminPasswordHashFile = '/var/www/.bakery-admin-password-hash';
 if ($adminPasswordHash === '' && is_readable($adminPasswordHashFile)) {
     $adminPasswordHash = trim((string) file_get_contents($adminPasswordHashFile));
 }
+$adminMfaFile = '/var/www/.bakery-admin-mfa.json';
+$adminMfaConfig = ['enabled' => false, 'secret' => '', 'recovery_codes' => [], 'last_counter' => -1];
+if (is_readable($adminMfaFile)) {
+    $savedMfaConfig = json_decode((string) file_get_contents($adminMfaFile), true);
+    if (is_array($savedMfaConfig)) {
+        $adminMfaConfig = array_merge($adminMfaConfig, $savedMfaConfig);
+    }
+}
 
 try {
     $db = new Database();
@@ -67,6 +75,116 @@ function csrfIsValid(): bool
 function isAdmin(): bool
 {
     return isset($_SESSION['admin_authenticated']) && $_SESSION['admin_authenticated'] === true;
+}
+
+function base32Encode(string $value): string
+{
+    $alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+    $buffer = 0;
+    $bitsLeft = 0;
+    $encoded = '';
+
+    foreach (unpack('C*', $value) as $byte) {
+        $buffer = ($buffer << 8) | $byte;
+        $bitsLeft += 8;
+        while ($bitsLeft >= 5) {
+            $bitsLeft -= 5;
+            $encoded .= $alphabet[($buffer >> $bitsLeft) & 31];
+        }
+        $buffer = $bitsLeft > 0 ? $buffer & ((1 << $bitsLeft) - 1) : 0;
+    }
+    if ($bitsLeft > 0) {
+        $encoded .= $alphabet[($buffer << (5 - $bitsLeft)) & 31];
+    }
+
+    return $encoded;
+}
+
+function base32Decode(string $value): string
+{
+    $alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+    $clean = strtoupper((string) preg_replace('/[^A-Z2-7]/i', '', $value));
+    $buffer = 0;
+    $bitsLeft = 0;
+    $decoded = '';
+
+    for ($i = 0, $length = strlen($clean); $i < $length; $i++) {
+        $position = strpos($alphabet, $clean[$i]);
+        if ($position === false) {
+            return '';
+        }
+        $buffer = ($buffer << 5) | $position;
+        $bitsLeft += 5;
+        if ($bitsLeft >= 8) {
+            $bitsLeft -= 8;
+            $decoded .= chr(($buffer >> $bitsLeft) & 255);
+        }
+        $buffer = $bitsLeft > 0 ? $buffer & ((1 << $bitsLeft) - 1) : 0;
+    }
+
+    return $decoded;
+}
+
+function totpCode(string $secret, int $counter): string
+{
+    $key = base32Decode($secret);
+    $high = intdiv($counter, 4294967296);
+    $low = $counter % 4294967296;
+    $digest = hash_hmac('sha1', pack('N2', $high, $low), $key, true);
+    $offset = ord($digest[19]) & 15;
+    $number = ((ord($digest[$offset]) & 127) << 24)
+        | ((ord($digest[$offset + 1]) & 255) << 16)
+        | ((ord($digest[$offset + 2]) & 255) << 8)
+        | (ord($digest[$offset + 3]) & 255);
+
+    return str_pad((string) ($number % 1000000), 6, '0', STR_PAD_LEFT);
+}
+
+function verifyTotp(string $secret, string $submittedCode, int $window = 1): ?int
+{
+    $code = preg_replace('/\s+/', '', $submittedCode);
+    if (!is_string($code) || !preg_match('/^[0-9]{6}$/', $code) || $secret === '') {
+        return null;
+    }
+
+    $currentCounter = intdiv(time(), 30);
+    for ($offset = -$window; $offset <= $window; $offset++) {
+        $counter = $currentCounter + $offset;
+        if ($counter >= 0 && hash_equals(totpCode($secret, $counter), $code)) {
+            return $counter;
+        }
+    }
+
+    return null;
+}
+
+function normaliseRecoveryCode(string $code): string
+{
+    return strtoupper((string) preg_replace('/[^A-Z0-9]/i', '', $code));
+}
+
+function useRecoveryCode(array &$config, string $submittedCode): bool
+{
+    $code = normaliseRecoveryCode($submittedCode);
+    if (strlen($code) < 8 || empty($config['recovery_codes']) || !is_array($config['recovery_codes'])) {
+        return false;
+    }
+
+    foreach ($config['recovery_codes'] as $index => $hash) {
+        if (is_string($hash) && password_verify($code, $hash)) {
+            unset($config['recovery_codes'][$index]);
+            $config['recovery_codes'] = array_values($config['recovery_codes']);
+            return true;
+        }
+    }
+
+    return false;
+}
+
+function saveMfaConfig(string $path, array $config): bool
+{
+    $json = json_encode($config, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+    return is_string($json) && file_put_contents($path, $json . PHP_EOL, LOCK_EX) !== false;
 }
 
 function formatProduct(array $product): array
@@ -333,8 +451,14 @@ if ($page === 'admin') {
             $adminLoginError = 'Your session expired. Please reload the page and try again.';
         } elseif ($adminPasswordHash !== '' && password_verify((string) ($_POST['password'] ?? ''), $adminPasswordHash)) {
             session_regenerate_id(true);
-            $_SESSION['admin_authenticated'] = true;
             $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+            if (!empty($adminMfaConfig['enabled']) && !empty($adminMfaConfig['secret'])) {
+                $_SESSION['admin_mfa_pending'] = true;
+                unset($_SESSION['admin_authenticated']);
+            } else {
+                $_SESSION['admin_authenticated'] = true;
+                unset($_SESSION['admin_mfa_pending']);
+            }
             redirectTo('index.php?page=admin');
         } else {
             usleep(500000);
@@ -346,9 +470,56 @@ if ($page === 'admin') {
         exit;
     }
 
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action === 'admin-mfa-login') {
+        $submittedCode = (string) ($_POST['verificationCode'] ?? '');
+        $verified = false;
+
+        if (!csrfIsValid()) {
+            $adminLoginError = 'Your session expired. Please reload the page and try again.';
+        } elseif (empty($_SESSION['admin_mfa_pending']) || empty($adminMfaConfig['enabled'])) {
+            $adminLoginError = 'Please enter your password again.';
+        } else {
+            $counter = verifyTotp((string) $adminMfaConfig['secret'], $submittedCode);
+            $lastCounter = (int) ($adminMfaConfig['last_counter'] ?? -1);
+
+            if ($counter !== null && $counter > $lastCounter) {
+                $adminMfaConfig['last_counter'] = $counter;
+                $verified = saveMfaConfig($adminMfaFile, $adminMfaConfig);
+            } elseif (useRecoveryCode($adminMfaConfig, $submittedCode)) {
+                $verified = saveMfaConfig($adminMfaFile, $adminMfaConfig);
+            }
+
+            if (!$verified) {
+                usleep(500000);
+                $adminLoginError = 'The verification code is incorrect or has already been used.';
+            }
+        }
+
+        if ($verified) {
+            session_regenerate_id(true);
+            $_SESSION['admin_authenticated'] = true;
+            unset($_SESSION['admin_mfa_pending']);
+            $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+            redirectTo('index.php?page=admin');
+        }
+
+        http_response_code(401);
+        include __DIR__ . '/pages/admin-login.php';
+        exit;
+    }
+
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action === 'admin-mfa-back') {
+        if (csrfIsValid()) {
+            unset($_SESSION['admin_mfa_pending']);
+            session_regenerate_id(true);
+            $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+        }
+        redirectTo('index.php?page=admin');
+    }
+
     if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action === 'admin-logout') {
         if (csrfIsValid()) {
-            unset($_SESSION['admin_authenticated']);
+            unset($_SESSION['admin_authenticated'], $_SESSION['admin_mfa_pending'], $_SESSION['mfa_setup_secret']);
             session_regenerate_id(true);
             $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
         }
@@ -426,6 +597,74 @@ if ($page === 'admin') {
             if (empty($adminErrors)) {
                 $db->setSpecialOffer((int) $productId, $offerPriceCents, $active ? 1 : 0);
                 redirectTo('index.php?page=admin&notice=offer');
+            }
+        } elseif ($action === 'mfa-start') {
+            $currentPassword = (string) ($_POST['currentPassword'] ?? '');
+            if ($adminPasswordHash === '' || !password_verify($currentPassword, $adminPasswordHash)) {
+                $adminErrors[] = 'The current password is incorrect.';
+            } elseif (!empty($adminMfaConfig['enabled'])) {
+                $adminErrors[] = 'Microsoft Authenticator is already enabled.';
+            } else {
+                $_SESSION['mfa_setup_secret'] = base32Encode(random_bytes(20));
+                redirectTo('index.php?page=admin&notice=mfa-setup#security');
+            }
+        } elseif ($action === 'mfa-enable') {
+            $setupSecret = (string) ($_SESSION['mfa_setup_secret'] ?? '');
+            $counter = verifyTotp($setupSecret, (string) ($_POST['verificationCode'] ?? ''));
+
+            if ($setupSecret === '') {
+                $adminErrors[] = 'The setup session expired. Please start again.';
+            } elseif ($counter === null) {
+                $adminErrors[] = 'Enter the current six-digit code from Microsoft Authenticator.';
+            } else {
+                $recoveryCodes = [];
+                $recoveryHashes = [];
+                for ($i = 0; $i < 8; $i++) {
+                    $rawCode = strtoupper(bin2hex(random_bytes(5)));
+                    $displayCode = substr($rawCode, 0, 5) . '-' . substr($rawCode, 5);
+                    $recoveryCodes[] = $displayCode;
+                    $recoveryHashes[] = password_hash($rawCode, PASSWORD_DEFAULT);
+                }
+
+                $newMfaConfig = [
+                    'enabled' => true,
+                    'secret' => $setupSecret,
+                    'recovery_codes' => $recoveryHashes,
+                    'last_counter' => $counter,
+                ];
+
+                if (!saveMfaConfig($adminMfaFile, $newMfaConfig)) {
+                    $adminErrors[] = 'Authenticator settings could not be saved. Please try again.';
+                } else {
+                    unset($_SESSION['mfa_setup_secret']);
+                    $_SESSION['mfa_recovery_codes'] = $recoveryCodes;
+                    redirectTo('index.php?page=admin&notice=mfa-enabled#security');
+                }
+            }
+        } elseif ($action === 'mfa-cancel') {
+            unset($_SESSION['mfa_setup_secret']);
+            redirectTo('index.php?page=admin#security');
+        } elseif ($action === 'mfa-disable') {
+            $currentPassword = (string) ($_POST['currentPassword'] ?? '');
+            $submittedCode = (string) ($_POST['verificationCode'] ?? '');
+            $counter = verifyTotp((string) ($adminMfaConfig['secret'] ?? ''), $submittedCode);
+            $validSecondFactor = $counter !== null || useRecoveryCode($adminMfaConfig, $submittedCode);
+
+            if ($adminPasswordHash === '' || !password_verify($currentPassword, $adminPasswordHash)) {
+                $adminErrors[] = 'The current password is incorrect.';
+            }
+            if (!$validSecondFactor) {
+                $adminErrors[] = 'Enter a valid Authenticator or recovery code.';
+            }
+
+            if (empty($adminErrors)) {
+                $disabledMfaConfig = ['enabled' => false, 'secret' => '', 'recovery_codes' => [], 'last_counter' => -1];
+                if (!saveMfaConfig($adminMfaFile, $disabledMfaConfig)) {
+                    $adminErrors[] = 'Authenticator settings could not be updated. Please try again.';
+                } else {
+                    unset($_SESSION['mfa_setup_secret'], $_SESSION['mfa_recovery_codes']);
+                    redirectTo('index.php?page=admin&notice=mfa-disabled#security');
+                }
             }
         } elseif ($action === 'change-password') {
             $currentPassword = (string) ($_POST['currentPassword'] ?? '');

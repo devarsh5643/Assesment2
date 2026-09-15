@@ -6,6 +6,9 @@ $noticeMessages = [
     'deleted' => 'Product deleted successfully.',
     'offer' => 'Special offer updated successfully.',
     'password' => 'Admin password changed successfully.',
+    'mfa-setup' => 'Scan the QR code, then verify the code shown in Microsoft Authenticator.',
+    'mfa-enabled' => 'Microsoft Authenticator has been enabled.',
+    'mfa-disabled' => 'Microsoft Authenticator has been disabled.',
 ];
 $noticeKey = (string) ($_GET['notice'] ?? '');
 $products = $db->getAllProducts();
@@ -14,6 +17,15 @@ $activeOfferCount = count(array_filter($products, static function (array $produc
     return !empty($product['special_offer_active']) && !empty($product['special_offer_price_cents']);
 }));
 $categoryCount = count(array_unique(array_column($products, 'category')));
+$mfaEnabled = !empty($adminMfaConfig['enabled']) && !empty($adminMfaConfig['secret']);
+$mfaSetupSecret = (string) ($_SESSION['mfa_setup_secret'] ?? '');
+$mfaSetupUri = $mfaSetupSecret === '' ? '' : 'otpauth://totp/'
+    . rawurlencode('Adelaide Artisan Bakery:Admin')
+    . '?secret=' . rawurlencode($mfaSetupSecret)
+    . '&issuer=' . rawurlencode('Adelaide Artisan Bakery')
+    . '&algorithm=SHA1&digits=6&period=30';
+$mfaRecoveryCodes = $_SESSION['mfa_recovery_codes'] ?? [];
+unset($_SESSION['mfa_recovery_codes']);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -208,9 +220,74 @@ $categoryCount = count(array_unique(array_column($products, 'category')));
 
         <section id="security" class="admin-panel admin-security-panel" aria-labelledby="security-title">
             <div class="admin-panel-heading">
-                <div><p class="admin-kicker">Account security</p><h2 id="security-title">Change admin password</h2><p>Use a strong password that you do not use for another account.</p></div>
+                <div><p class="admin-kicker">Account security</p><h2 id="security-title">Security settings</h2><p>Protect access with a strong password and Microsoft Authenticator.</p></div>
                 <span class="admin-security-icon" aria-hidden="true">◇</span>
             </div>
+
+            <div class="admin-authenticator">
+                <div class="admin-authenticator-heading">
+                    <div><span class="admin-authenticator-logo" aria-hidden="true">M</span><div><h3>Microsoft Authenticator</h3><p>Require a six-digit verification code after the admin password.</p></div></div>
+                    <span class="mfa-status <?= $mfaEnabled ? 'enabled' : '' ?>"><?= $mfaEnabled ? 'Enabled' : 'Not enabled' ?></span>
+                </div>
+
+                <?php if (!empty($mfaRecoveryCodes) && is_array($mfaRecoveryCodes)): ?>
+                <div class="mfa-recovery-box" role="status">
+                    <h4>Save your recovery codes now</h4>
+                    <p>Each code works once. Keep them somewhere safe because they will not be shown again.</p>
+                    <div class="mfa-recovery-grid">
+                        <?php foreach ($mfaRecoveryCodes as $recoveryCode): ?><code><?= e($recoveryCode) ?></code><?php endforeach; ?>
+                    </div>
+                    <button class="button button-small button-secondary" type="button" onclick="window.print()">Print recovery codes</button>
+                </div>
+                <?php elseif ($mfaEnabled): ?>
+                <div class="mfa-enabled-box">
+                    <p><strong>Two-step verification is active.</strong> Every new admin login now requires the changing code from your Authenticator app.</p>
+                    <details>
+                        <summary>Disable Microsoft Authenticator</summary>
+                        <form class="mfa-disable-form" action="<?= e($adminUrl) ?>#security" method="post">
+                            <input type="hidden" name="action" value="mfa-disable">
+                            <input type="hidden" name="csrf_token" value="<?= e($_SESSION['csrf_token']) ?>">
+                            <div class="field"><label for="mfa-disable-password">Current password</label><input id="mfa-disable-password" name="currentPassword" type="password" autocomplete="current-password" required></div>
+                            <div class="field"><label for="mfa-disable-code">Authenticator or recovery code</label><input id="mfa-disable-code" name="verificationCode" type="text" autocomplete="one-time-code" required></div>
+                            <button class="admin-delete-button" type="submit">Disable two-step verification</button>
+                        </form>
+                    </details>
+                </div>
+                <?php elseif ($mfaSetupSecret !== ''): ?>
+                <div class="mfa-setup-grid">
+                    <div class="mfa-qr-panel">
+                        <div id="mfa-qrcode" data-uri="<?= e($mfaSetupUri) ?>" aria-label="Microsoft Authenticator setup QR code"></div>
+                        <p>Microsoft Authenticator → <strong>+</strong> → <strong>Other account</strong> → Scan QR code</p>
+                    </div>
+                    <div class="mfa-setup-steps">
+                        <p class="mfa-step"><span>1</span> Scan the QR code using Microsoft Authenticator.</p>
+                        <p class="mfa-step"><span>2</span> If scanning does not work, enter this setup key manually:</p>
+                        <code class="mfa-secret"><?= e($mfaSetupSecret) ?></code>
+                        <p class="mfa-step"><span>3</span> Enter the six-digit code shown in the app.</p>
+                        <form action="<?= e($adminUrl) ?>#security" method="post">
+                            <input type="hidden" name="action" value="mfa-enable">
+                            <input type="hidden" name="csrf_token" value="<?= e($_SESSION['csrf_token']) ?>">
+                            <div class="field"><label for="mfa-setup-code">Verification code</label><input id="mfa-setup-code" name="verificationCode" type="text" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" placeholder="000000" required></div>
+                            <button class="button button-small" type="submit">Verify and enable</button>
+                        </form>
+                        <form class="mfa-cancel-form" action="<?= e($adminUrl) ?>#security" method="post">
+                            <input type="hidden" name="action" value="mfa-cancel"><input type="hidden" name="csrf_token" value="<?= e($_SESSION['csrf_token']) ?>">
+                            <button class="text-button" type="submit">Cancel setup</button>
+                        </form>
+                    </div>
+                </div>
+                <?php else: ?>
+                <form class="mfa-start-form" action="<?= e($adminUrl) ?>#security" method="post">
+                    <input type="hidden" name="action" value="mfa-start"><input type="hidden" name="csrf_token" value="<?= e($_SESSION['csrf_token']) ?>">
+                    <div><strong>Add an extra layer of security</strong><p>Confirm your password to generate a private setup QR code.</p></div>
+                    <div class="field"><label for="mfa-start-password">Current password</label><input id="mfa-start-password" name="currentPassword" type="password" autocomplete="current-password" required></div>
+                    <button class="button button-small" type="submit">Configure Authenticator</button>
+                </form>
+                <?php endif; ?>
+            </div>
+
+            <div class="admin-security-divider"></div>
+            <div class="admin-password-heading"><h3>Change admin password</h3><p>Use a strong password that you do not use for another account.</p></div>
             <form class="admin-password-form" action="<?= e($adminUrl) ?>#security" method="post">
                 <input type="hidden" name="action" value="change-password"><input type="hidden" name="csrf_token" value="<?= e($_SESSION['csrf_token']) ?>">
                 <div class="field admin-field-wide"><label for="current-password">Current password</label><input id="current-password" name="currentPassword" type="password" autocomplete="current-password" required></div>
@@ -224,5 +301,21 @@ $categoryCount = count(array_unique(array_column($products, 'category')));
         <footer class="admin-footer"><span>© <?= date('Y') ?> Adelaide Artisan Bakery</span><span>Secure administration portal</span></footer>
     </main>
 </div>
+<?php if ($mfaSetupUri !== ''): ?>
+<script src="public/qrcode.min.js"></script>
+<script>
+    const qrTarget = document.getElementById('mfa-qrcode');
+    if (qrTarget && window.QRCode) {
+        new QRCode(qrTarget, {
+            text: qrTarget.dataset.uri,
+            width: 190,
+            height: 190,
+            colorDark: '#17212b',
+            colorLight: '#ffffff',
+            correctLevel: QRCode.CorrectLevel.M
+        });
+    }
+</script>
+<?php endif; ?>
 </body>
 </html>
