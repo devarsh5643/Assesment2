@@ -8,6 +8,7 @@ session_set_cookie_params([
 ]);
 session_start();
 require_once __DIR__ . '/db/config.php';
+require_once __DIR__ . '/lib/mailer.php';
 
 $adminPasswordHash = getenv('ADMIN_PASSWORD_HASH') ?: '';
 $adminPasswordHashFile = '/var/www/.bakery-admin-password-hash';
@@ -408,6 +409,13 @@ if ($page === 'checkout') {
                 'Online Order',
                 $orderMessage
             );
+            sendEnquiryNotification([
+                'name' => trim((string) $_POST['customerName']),
+                'email' => trim((string) $_POST['email']),
+                'phone' => trim((string) $_POST['phone']),
+                'type' => 'Online Order',
+                'message' => $orderMessage,
+            ]);
             $_SESSION['cart'] = [];
             redirectTo('index.php?ordered=1');
         }
@@ -435,6 +443,13 @@ if ($page === 'enquiries' && $_SERVER['REQUEST_METHOD'] === 'POST') {
             trim((string) $_POST['enquiryType']),
             trim((string) $_POST['message'])
         );
+        sendEnquiryNotification([
+            'name' => trim((string) $_POST['customerName']),
+            'email' => trim((string) $_POST['email']),
+            'phone' => trim((string) $_POST['phone']),
+            'type' => trim((string) $_POST['enquiryType']),
+            'message' => trim((string) $_POST['message']),
+        ]);
         redirectTo('index.php?sent=1#enquire');
     }
 

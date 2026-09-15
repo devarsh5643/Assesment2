@@ -85,6 +85,9 @@ Assesment2/
 │   └── .gitkeep           # Runtime database directory
 ├── db/
 │   └── config.php         # SQLite schema, seed data and queries
+├── lib/
+│   ├── mailer.php         # Secure enquiry email notifications
+│   └── PHPMailer/         # Vendored SMTP library
 ├── pages/
 │   ├── admin.php          # Product CRUD and enquiry list
 │   ├── checkout.php       # Cart totals and order form
@@ -113,13 +116,13 @@ The runtime database is `data/bakery.db`. It is intentionally excluded from Git 
 ## Known local-development limitation
 
 The password login protects all product, offer and enquiry administration actions. A full
-commercial deployment would additionally require HTTPS, rate limiting and individual user
-accounts.
+commercial deployment would additionally use individual administrator accounts and centralised
+audit logging.
 
 ## Automatic deployment to the live server
 
 The workflow in `.github/workflows/deploy.yml` automatically publishes every push to the
-`main` branch to `http://32.236.141.114/`. It validates all PHP files before deploying,
+`main` branch to `https://32.236.141.114/`. It validates all PHP files before deploying,
 preserves the live SQLite database, reloads Apache and checks that the website responds.
 
 Add these two GitHub Actions repository secrets before running it:
@@ -130,6 +133,11 @@ Add these two GitHub Actions repository secrets before running it:
    `ec2-user` on the server, including the `BEGIN` and `END` lines.
 4. Create another repository secret named `ADMIN_PASSWORD` and enter the password that
    should unlock the admin page.
+
+To email a copy of every enquiry through Gmail, enable two-step verification on
+`Pateldevarsh1010@gmail.com`, create a Google App Password, and save that 16-character value as
+the GitHub Actions secret `GMAIL_APP_PASSWORD`. Never store the normal Google password in GitHub.
+Enquiries are always stored in SQLite even when email delivery is unavailable.
 
 After the secret is saved, push a commit to `main`, or open the **Actions** tab and run
 **Deploy bakery website** manually. The server must allow inbound SSH on port 22 from

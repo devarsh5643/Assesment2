@@ -33,6 +33,7 @@ jobs:
         env:
           SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
           ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
         run: |
           if [ -z "$SSH_PRIVATE_KEY" ]; then
             echo "::error::Add the EC2_SSH_PRIVATE_KEY repository secret before deploying."
@@ -47,6 +48,21 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
           php -r 'echo password_hash(getenv("ADMIN_PASSWORD"), PASSWORD_DEFAULT);' > ~/.ssh/admin_password_hash
           chmod 600 ~/.ssh/admin_password_hash
+          if [ -n "$GMAIL_APP_PASSWORD" ]; then
+            php -r '
+              $config = [
+                "host" => "smtp.gmail.com",
+                "port" => 587,
+                "username" => "Pateldevarsh1010@gmail.com",
+                "password" => str_replace(" ", "", trim((string) getenv("GMAIL_APP_PASSWORD"))),
+                "recipient" => "Pateldevarsh1010@gmail.com",
+              ];
+              file_put_contents(getenv("HOME") . "/.ssh/email_config.json", json_encode($config));
+            '
+            chmod 600 ~/.ssh/email_config.json
+          else
+            echo "::warning::GMAIL_APP_PASSWORD is not set; enquiries will still be saved but email copies are disabled."
+          fi
           ssh-keyscan -H 32.236.141.114 >> ~/.ssh/known_hosts
 
       - name: Upload release
@@ -61,6 +77,11 @@ jobs:
           scp -i ~/.ssh/deploy_key \
             ~/.ssh/admin_password_hash \
             ec2-user@32.236.141.114:/tmp/admin_password_hash
+          if [ -f ~/.ssh/email_config.json ]; then
+            scp -i ~/.ssh/deploy_key \
+              ~/.ssh/email_config.json \
+              ec2-user@32.236.141.114:/tmp/email_config.json
+          fi
 
       - name: Activate release
         run: |
@@ -92,10 +113,16 @@ jobs:
             fi
             sudo restorecon -F /var/www/.bakery-admin-mfa.json 2>/dev/null || true
 
+            if [ -f /tmp/email_config.json ]; then
+              sudo install -o apache -g apache -m 600 \
+                /tmp/email_config.json /var/www/.bakery-email.json
+              sudo restorecon -F /var/www/.bakery-email.json 2>/dev/null || true
+            fi
+
             sudo apachectl configtest
             sudo systemctl reload httpd
             rm -rf /tmp/adelaide-bakery-release
-            rm -f /tmp/admin_password_hash /tmp/admin_mfa.json
+            rm -f /tmp/admin_password_hash /tmp/admin_mfa.json /tmp/email_config.json
           REMOTE
 
       - name: Configure trusted HTTPS certificate
