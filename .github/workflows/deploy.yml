@@ -88,5 +88,108 @@ jobs:
             rm -f /tmp/admin_password_hash
           REMOTE
 
+      - name: Configure trusted HTTPS certificate
+        run: |
+          ssh -i ~/.ssh/deploy_key ec2-user@32.236.141.114 <<'REMOTE'
+            set -euo pipefail
+
+            SITE_IP="32.236.141.114"
+            CERTBOT="/opt/certbot/bin/certbot"
+
+            sudo dnf install -y mod_ssl python3.11 python3.11-pip
+
+            if [ ! -x "$CERTBOT" ]; then
+              sudo python3.11 -m venv /opt/certbot
+            fi
+            sudo /opt/certbot/bin/pip install --quiet --upgrade pip certbot
+
+            sudo mkdir -p /var/www/html/.well-known/acme-challenge
+            sudo chown -R apache:apache /var/www/html/.well-known
+
+            if [ ! -f "/etc/letsencrypt/live/$SITE_IP/fullchain.pem" ]; then
+              sudo "$CERTBOT" certonly \
+                --webroot \
+                --webroot-path /var/www/html \
+                --ip-address "$SITE_IP" \
+                --cert-name "$SITE_IP" \
+                --preferred-profile shortlived \
+                --non-interactive \
+                --agree-tos \
+                --register-unsafely-without-email
+            else
+              sudo "$CERTBOT" renew --cert-name "$SITE_IP" --quiet
+            fi
+
+            if [ -f /etc/httpd/conf.d/ssl.conf ]; then
+              sudo mv /etc/httpd/conf.d/ssl.conf /etc/httpd/conf.d/ssl.conf.disabled
+            fi
+
+            sudo tee /etc/httpd/conf.d/adelaide-bakery-https.conf >/dev/null <<APACHE
+          Listen 443 https
+
+          <VirtualHost *:80>
+              ServerName $SITE_IP
+              DocumentRoot /var/www/html
+
+              Alias /.well-known/acme-challenge/ /var/www/html/.well-known/acme-challenge/
+              <Directory /var/www/html/.well-known/acme-challenge>
+                  Require all granted
+              </Directory>
+
+              RewriteEngine On
+              RewriteCond %{REQUEST_URI} !^/\.well-known/acme-challenge/
+              RewriteRule ^ https://$SITE_IP%{REQUEST_URI} [R=301,L,NE]
+          </VirtualHost>
+
+          <VirtualHost *:443>
+              ServerName $SITE_IP
+              DocumentRoot /var/www/html
+
+              SSLEngine on
+              SSLCertificateFile /etc/letsencrypt/live/$SITE_IP/fullchain.pem
+              SSLCertificateKeyFile /etc/letsencrypt/live/$SITE_IP/privkey.pem
+              SSLProtocol -all +TLSv1.2 +TLSv1.3
+
+              <Directory /var/www/html>
+                  Options -Indexes +FollowSymLinks
+                  AllowOverride All
+                  Require all granted
+              </Directory>
+
+              ErrorLog /var/log/httpd/adelaide-bakery-ssl-error.log
+              CustomLog /var/log/httpd/adelaide-bakery-ssl-access.log combined
+          </VirtualHost>
+          APACHE
+
+            sudo tee /etc/systemd/system/certbot-renew.service >/dev/null <<SERVICE
+          [Unit]
+          Description=Renew the Adelaide Bakery HTTPS certificate
+
+          [Service]
+          Type=oneshot
+          ExecStart=$CERTBOT renew --quiet --deploy-hook "/usr/bin/systemctl reload httpd"
+          SERVICE
+
+            sudo tee /etc/systemd/system/certbot-renew.timer >/dev/null <<'TIMER'
+          [Unit]
+          Description=Check the Adelaide Bakery HTTPS certificate twice daily
+
+          [Timer]
+          OnCalendar=*-*-* 00,12:00:00
+          RandomizedDelaySec=1h
+          Persistent=true
+
+          [Install]
+          WantedBy=timers.target
+          TIMER
+
+            sudo systemctl daemon-reload
+            sudo systemctl enable --now certbot-renew.timer
+            sudo apachectl configtest
+            sudo systemctl restart httpd
+          REMOTE
+
       - name: Verify live website
-        run: curl --fail --show-error --retry 5 --retry-delay 3 http://32.236.141.114/
+        run: |
+          curl --fail --show-error --retry 5 --retry-delay 3 https://32.236.141.114/
+          test "$(curl --silent --output /dev/null --write-out '%{http_code}' http://32.236.141.114/)" = "301"
