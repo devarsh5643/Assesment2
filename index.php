@@ -427,6 +427,41 @@ if ($page === 'admin') {
                 $db->setSpecialOffer((int) $productId, $offerPriceCents, $active ? 1 : 0);
                 redirectTo('index.php?page=admin&notice=offer');
             }
+        } elseif ($action === 'change-password') {
+            $currentPassword = (string) ($_POST['currentPassword'] ?? '');
+            $newPassword = (string) ($_POST['newPassword'] ?? '');
+            $confirmPassword = (string) ($_POST['confirmPassword'] ?? '');
+
+            if ($adminPasswordHash === '' || !password_verify($currentPassword, $adminPasswordHash)) {
+                $adminErrors[] = 'The current password is incorrect.';
+            }
+            if (strlen($newPassword) < 10) {
+                $adminErrors[] = 'The new password must contain at least 10 characters.';
+            }
+            if (!preg_match('/[A-Z]/', $newPassword)
+                || !preg_match('/[a-z]/', $newPassword)
+                || !preg_match('/[0-9]/', $newPassword)
+                || !preg_match('/[^A-Za-z0-9]/', $newPassword)) {
+                $adminErrors[] = 'Use an uppercase letter, lowercase letter, number and symbol in the new password.';
+            }
+            if (!hash_equals($newPassword, $confirmPassword)) {
+                $adminErrors[] = 'The new passwords do not match.';
+            }
+            if ($currentPassword !== '' && hash_equals($currentPassword, $newPassword)) {
+                $adminErrors[] = 'Choose a new password that is different from the current password.';
+            }
+
+            if (empty($adminErrors)) {
+                $newPasswordHash = password_hash($newPassword, PASSWORD_DEFAULT);
+                $written = file_put_contents($adminPasswordHashFile, $newPasswordHash . PHP_EOL, LOCK_EX);
+
+                if ($written === false) {
+                    $adminErrors[] = 'The password file could not be updated. Please try again.';
+                } else {
+                    clearstatcache(true, $adminPasswordHashFile);
+                    redirectTo('index.php?page=admin&notice=password#security');
+                }
+            }
         } else {
             $adminErrors[] = 'The requested admin action is not supported.';
         }

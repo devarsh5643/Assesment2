@@ -78,8 +78,10 @@ jobs:
             sudo find /var/www/html -type f -exec chmod 644 {} +
             sudo restorecon -RF /var/www/html 2>/dev/null || true
 
-            sudo install -o apache -g apache -m 600 \
-              /tmp/admin_password_hash /var/www/.bakery-admin-password-hash
+            if ! sudo test -f /var/www/.bakery-admin-password-hash; then
+              sudo install -o apache -g apache -m 600 \
+                /tmp/admin_password_hash /var/www/.bakery-admin-password-hash
+            fi
             sudo restorecon -F /var/www/.bakery-admin-password-hash 2>/dev/null || true
 
             sudo apachectl configtest
